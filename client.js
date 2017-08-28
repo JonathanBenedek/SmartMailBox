@@ -32,28 +32,34 @@ class Client {
 
 	}
 
-	addEmail(newEmail, name, session) {
+	addEmail(newEmail, name, session, cb) {
 		//check if session initlaiz
 		this.__getRowsByKey("Users", "session", session)
 			.then((rows) => {
 				if (rows.length !== 0) {
 					//yes - session init
-					let userData= rows[0]
+					let userData = rows[0]
 					this.__isNewInDb("Email", "Email", newEmail, false, userData)
-						.then((userData ) => {
+						.then((userData) => {
 							if (userData) {
 								console.log("TODO: set a new email");
 								this.__setNewMail(newEmail, name, userData.User_id)
-								.then((res)=>{console.log(res)})
+									.then((err) => { 
+										if (err){
+											cb(404);
+										}
+											cb(200);
+									 })
 							}
 							else {
-								console.log ("TODO: handle with this error");
+								console.log("TODO: handle with this error - not new");
 							}
-						}).bind(this)
+						})
 				}
 				else {
 					//no - sessiont doesnt init
 					console.log("new session")
+					cb(404)
 					console.log(" TODO: handle with this error");
 				}
 			})
@@ -63,24 +69,22 @@ class Client {
 			})
 	}
 
-	__setNewMail(email, nameForEmail, userId){
-		return new Promiss((resolve, reject)=>{
-			const query = "INSERT INTO Email (Email, User_id, Name) VALUES ('" + email +"', '"+ userId + "', '" + userId+ "')";
+	__setNewMail(email, nameForEmail, userId) {
+		return new Promise((resolve, reject) => {
+			const query = "INSERT INTO Email (Email, User_id, Name) VALUES ('" + email + "', '" + userId + "', '" + nameForEmail + "')";
 			console.log(query);
 			const sql = new Sql();
 			sql.connect();
-			sql.query(query, (err, res) =>{
-				if (err){
+			sql.query(query, (err, res) => {
+				if (err) {
 					reject(err);
 				}
-				else{
+				else {
 					resolve();
 				}
 			})
 			sql.end;
 		})
-
-		
 	}
 
 	__getRowsByKey(table, key, value, isInt) {
@@ -152,7 +156,7 @@ class Client {
 
 
 
-	logIn(userName, password,session, cb) {
+	logIn(userName, password, session, cb) {
 		const sql = new Sql();
 		//check if found current mail in our database
 		sql.connect();
@@ -165,7 +169,7 @@ class Client {
 			}
 			else {
 				if (rows.length === 0) {
-					cb (401)
+					cb(401)
 					console.log("TODO: need to return current message to the user that no email or password in our database, he shuld to sign up first.");
 				}
 				else {
@@ -179,8 +183,8 @@ class Client {
 
 	}
 
-	__isNewInDb(table, column, value, isInt , userData) {
-		return new Promise((resolve, reject) => {
+	__isNewInDb(table, column, value, isInt, userData) {
+		return new Promise(function (resolve, reject) {
 			const sql = new Sql();
 			let query;
 			sql.connect();
@@ -214,13 +218,13 @@ function test() {
 	let userDetailes = {};
 	userDetailes.password = "12345";
 	userDetailes.userName = "jon";
-	userDetailes.name = "nameforemail";
+	userDetailes.name = "namefo33remail";
 	userDetailes.deviceSerialNum = "2";
 	userDetailes.email = "TEST1benedekjonatan@gmail.com";
-	client.addEmail("addEmail@","nameFormMail" ,"session1");
+	client.addEmail("addEmail1@", "nameFormMail", "session1");
 	//client.
 }
-//test();
+test();
 
 
 /*
