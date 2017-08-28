@@ -1,0 +1,11 @@
+.vscode/
+node_modules/
+buildClient/
+*.txt
+*.jpg
+keyPairName.pem
+build/
+SRS- Smart Mail Box.docx
+testConnectToSql.js
+buildClient.zip
+~$S- Smart Mail Box.docx
