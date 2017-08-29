@@ -38,28 +38,28 @@ class Client {
 					this.__isNewInDb("Devices", "Device_serial_num_product", deviceId, false)
 						.then((result) => {
 							if (result.err) {
-								cb(404);
+								cb(404, "it's not you it's us..please wait few minutes and try angain");
 								return;
 							}
 							if (result.new) {
 								//device doesnt exists at database
-								cb(401);
+								cb(401, "Device doesnt exists");
 								return;
 							}
 							//device exists at database
 							//check if we have user already for spacific device_id
 							if (result.rows.User_id == '0') {
-								console.log ("no user for this device..can update user for this device!")
+								console.log("no user for this device..can update user for this device!")
 								this.__updateUserId2Devices(deviceId, userData.User_id)
 							}
-							else{
+							else {
 								console.log("we have already user for this deviceId . cant update")
-								cb(404);
+								cb(401, "This device register with another user");
 							}
 						})
 
 				}
-			}).catch((err) => { console.log(err); cb(404); })
+			}).catch((err) => { console.log(err); cb(404, "it's not you it's us..please wait few minutes and try angain"); })
 	}
 
 	__updateUserId2Devices(deviceId, userId) {
@@ -92,7 +92,7 @@ class Client {
 					this.__isNewInDb("Email", "Email", newEmail, false)
 						.then((result) => {
 							if (result.err) {
-								cb(404);
+								cb(404, "it's not you it's us..please wait few minutes and try angain");
 								return;
 							}
 							if (result.new) {
@@ -100,26 +100,25 @@ class Client {
 								this.__setNewMail(newEmail, name, userData.User_id)
 									.then((err) => {
 										if (err) {
-											cb(404);
+											cb(404, "it's not you it's us..please wait few minutes and try angain");
 										}
 										cb(200);
 									})
 							}
 							else {
-								console.log("TODO: handle with this error - not new");
+								cb(404, "the mail already exists");
 							}
 						})
 				}
 				else {
 					//no - sessiont doesnt init
-					console.log("new session")
-					cb(404)
-					console.log(" TODO: handle with this error");
+					console.log("Session doesnt init");
+					cb(404, "please log in first");
 				}
 			})
 			.catch((err) => {
 				console.log(err);
-				console.log("TODO: handle with this error");
+				cb(404, "it's not you it's us..please wait few minutes and try angain");
 			})
 	}
 
@@ -167,20 +166,22 @@ class Client {
 	/*
 	useDetailes: password, email, firstName, lastName, 
 	*/
-	signUp(userDetailes, session) {
-		//TODO: check device id
+	signUp(userDetailes, session, cb) {
 		// check we do not have email in our database, if we have wo return error messege to the client that the email is already.
 		const sql = new Sql();
 		sql.connect();
 
-		let query = "SELECT * FROM Devices WHERE Device_serial_num_product = '" + userDetailes.deviceSerialNum + "'";
+		//check if we have deviceId
+		let query = "SELECT * FROM Devices WHERE Device_serial_num_product = '" + userDetailes.deviceId + "'";
 		console.log(query);
 		sql.query(query, (err, rows, fields) => {
 			if (err) {
-				console.log("TODO:handle with err");
+				cb(404, "it's not you it's us");
 			}
 			else {
 				if (rows.length !== 0) {
+					console.log("device id exists");
+					//TODO: check if device have already user
 					console.log("SELECT * FROM Users WHERE User_name = '" + userDetailes.userName + "'");
 					sql.query("SELECT * FROM Users WHERE User_name = '" + userDetailes.userName + "'", function (err, rows, fields) {
 						if (err) {
@@ -191,17 +192,22 @@ class Client {
 							// now we check the user_name is uniq and not found at our database
 							if (rows.length === 0) {
 								//OK
-								regestry(userDetailes, session);
+								//
+								regestry(userDetailes, session, (status, err) => {
+									cb(status, err);
+								})
 							}
 							else {
-								// email found at our database
+								// user name found at our database
 								console.log("TODO: handle with this issue");
+								cb(401, "User name already exists");
 							}
 						}
 					})
 				}
 				else {
-					console.log("TODO: no device id handle with error");
+					console.log("no device id ");
+					cb(401, "device id not exists");
 				}
 				sql.end();
 			}
@@ -219,17 +225,13 @@ class Client {
 		sql.query(query, function (err, rows, fields) {
 			if (err) {
 				cb(404)
-				console.log("TODO: handle with this error. in log in..");
 			}
 			else {
 				if (rows.length === 0) {
 					cb(401)
-					console.log("TODO: need to return current message to the user that no email or password in our database, he shuld to sign up first.");
 				}
 				else {
-					//TODO: create rendom number and set in session
-					//TODO: return session to client
-					console.log("TODO: need to return the home page data to the user");
+					console.log("TODO: need to set session");
 					cb(200);
 				}
 			}
@@ -284,7 +286,7 @@ function test() {
 	client.addDevice("2", "session1");
 	//client.
 }
-test();
+//test();
 
 
 /*
@@ -292,7 +294,7 @@ test();
 *  userDetailes : Password , User_name, email, name, device_id, 
 *  session 
 */
-function regestry(userDetailes, session) {
+function regestry(userDetailes, session, cb) {
 	const sql = new Sql();
 	sql.connect();
 	//SET USER table
@@ -301,22 +303,47 @@ function regestry(userDetailes, session) {
 	sql.query(query, (err, res) => {
 		if (err) {
 			sql.end();
-			console.log("TODO: handle with err");
 			console.log(err);
+			cb(401, err);
 		}
 		else {
 			// SET EMAIL table
 			const query = "INSERT INTO Email (Email, User_id, Name) VALUES ('" + userDetailes.email + "','" + res.insertId + "','" + userDetailes.name + "')";
 			console.log(query);
 			sql.query(query, (err, res) => {
+				if (err) {
+					//TODO: handle with duplcate entry
+					//TODO: delete let insert
+					cb(401, "Something worng, maybe email alredy in our system");
+				}
+				else {
+					//success
+					//TODO: set session
+					setSession(session, userDetailes.userId, (status) => {
+						cb(status);
+					})
+				}
 				console.log('test');
 				//SET Devices check if 
 			})
 			console.log("seccues . res:" + res);
-			//cb(deviceSerialNum, imagePath);
-			//promisse.resolve();
 		}
 	})
+
+}
+
+function setSession(sesison, userId, cb) {
+	const sql = new Sql();
+	sql.connect();
+	const query = "UPDATE Users SET `session`='" + sesison + "' WHERE `User_id`= '" + userId + "'";
+	sql.query(query, (err, res) => {
+		if (err) {console.log("TODO: revert 2 last insert"); console.log(err); cb(404, err) }
+		else{
+			cb(200, "success");
+		}
+
+	})
+	console.log(query);
 
 }
 

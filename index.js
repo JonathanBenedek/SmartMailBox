@@ -69,6 +69,25 @@ app.get('/*', function (req, res) {
 })
 
 
+app.post('/api/signup', function (req, res) {
+	try {
+		var randomNumber = Math.random().toString();
+		randomNumber = randomNumber.substring(2, randomNumber.length);
+		res.cookie('cookieName', randomNumber, { maxAge: 900000, httpOnly: false })
+		console.log('cookie created successfully');
+		const client = new Client();
+		client.signUp(req.body, randomNumber, (status, result) => {
+			res.setHeader('Content-Type', 'application/json');
+			res.status(status)
+				.send(JSON.stringify({ errorMsg: result }));
+			//.send("test");
+		})
+	}
+	catch(err){
+		res.status(404).send({});
+	}
+});
+
 app.post('/api/login', function (req, res) {
 	const userName = req.body.userName;
 	const password = req.body.password;
@@ -79,7 +98,7 @@ app.post('/api/login', function (req, res) {
 		res.cookie('cookieName', randomNumber, { maxAge: 900000, httpOnly: false })
 		console.log('cookie created successfully');
 		const client = new Client();
-		client.logIn(userName, password,randomNumber, (result) => {
+		client.logIn(userName, password, randomNumber, (result) => {
 			res.status(result);
 			res.send({});
 		})
