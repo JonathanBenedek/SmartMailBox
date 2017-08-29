@@ -28,8 +28,58 @@ class Client {
 		//TODO: run over all the letters and mark al letters that equal to the eviceSerialnnumber
 	}
 
-	addDevice(userDetailes) {
+	addDevice(deviceId, session) {
+		//check if session initlaiz
+		this.__getRowsByKey("Users", "session", session)
+			.then((rows) => {
+				if (rows.length !== 0) {
+					//yes- session init
+					let userData = rows[0];
+					this.__isNewInDb("Devices", "Device_serial_num_product", deviceId, false)
+						.then((result) => {
+							if (result.err) {
+								cb(404);
+								return;
+							}
+							if (result.new) {
+								//device doesnt exists at database
+								cb(401);
+								return;
+							}
+							//device exists at database
+							//check if we have user already for spacific device_id
+							if (result.rows.User_id == '0') {
+								console.log ("no user for this device..can update user for this device!")
+								this.__updateUserId2Devices(deviceId, userData.User_id)
+							}
+							else{
+								console.log("we have already user for this deviceId . cant update")
+								cb(404);
+							}
+						})
 
+				}
+			}).catch((err) => { console.log(err); cb(404); })
+	}
+
+	__updateUserId2Devices(deviceId, userId) {
+		return new Promise((resolve, reject) => {
+			const query = "UPDATE Devices SET `User_id`='4' WHERE `Device_serial_num_product`= '" + deviceId + "'";
+			console.log(query);
+			const sql = new Sql();
+			sql.connect();
+			sql.query(query, (err, res) => {
+				if (err) {
+					reject(err);
+				}
+				else {
+					if (res.affectedRows == 0) {
+						reject("no affected rows");
+					}
+					resolve();
+				}
+			})
+		})
 	}
 
 	addEmail(newEmail, name, session, cb) {
@@ -37,19 +87,23 @@ class Client {
 		this.__getRowsByKey("Users", "session", session)
 			.then((rows) => {
 				if (rows.length !== 0) {
-					//yes - session init
+					console.log("yes - session init");
 					let userData = rows[0]
-					this.__isNewInDb("Email", "Email", newEmail, false, userData)
-						.then((userData) => {
-							if (userData) {
+					this.__isNewInDb("Email", "Email", newEmail, false)
+						.then((result) => {
+							if (result.err) {
+								cb(404);
+								return;
+							}
+							if (result.new) {
 								console.log("TODO: set a new email");
 								this.__setNewMail(newEmail, name, userData.User_id)
-									.then((err) => { 
-										if (err){
+									.then((err) => {
+										if (err) {
 											cb(404);
 										}
-											cb(200);
-									 })
+										cb(200);
+									})
 							}
 							else {
 								console.log("TODO: handle with this error - not new");
@@ -183,8 +237,9 @@ class Client {
 
 	}
 
-	__isNewInDb(table, column, value, isInt, userData) {
+	__isNewInDb(table, column, value, isInt) {
 		return new Promise(function (resolve, reject) {
+			let result = {}
 			const sql = new Sql();
 			let query;
 			sql.connect();
@@ -196,14 +251,19 @@ class Client {
 			console.log(query);
 			sql.query(query, (err, rows, field) => {
 				if (err) {
-					reject(err);
+					result.err = err;
+					reject(result);
 				}
 				else {
+					result.err = null;
 					if (rows.length === 0) {
-						resolve(userData);
+						result.new = true;
+						resolve(result);
 					}
 					else {
-						resolve(null);
+						result.rows = rows[0];
+						result.new = false
+						resolve(result);
 					}
 				}
 			})
@@ -218,10 +278,10 @@ function test() {
 	let userDetailes = {};
 	userDetailes.password = "12345";
 	userDetailes.userName = "jon";
-	userDetailes.name = "namefo33remail";
+	userDetailes.name = "namefo333remail";
 	userDetailes.deviceSerialNum = "2";
 	userDetailes.email = "TEST1benedekjonatan@gmail.com";
-	client.addEmail("addEmail1@", "nameFormMail", "session1");
+	client.addDevice("2", "session1");
 	//client.
 }
 test();
